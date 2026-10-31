@@ -1,0 +1,13 @@
+# Runtime dependencies.
+#
+# The single source of truth is pyproject.toml, so this file just installs the
+# project in editable mode. Extras are opt-in:
+#
+#   pip install -r requirements.txt          # core only  (VLC + subtitles + config)
+#   pip install -e ".[ui]"                   # + PyQt6 overlay
+#   pip install -e ".[nlp]"                  # + NLTK / WordNet
+#   pip install -r requirements-vision.txt   # + YOLO / captioning (large)
+#   pip install -r requirements-dev.txt      # + tests / lint / types
+#
+# The overlay UI is part of the v1 product, so install it by default.
+-e .[ui]

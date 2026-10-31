@@ -1,0 +1,49 @@
+# FrameShot-AI — example configuration.
+# Copy to config.yaml and edit. `python -m frameshot init-config` does this for you.
+# Every key below is optional; missing keys fall back to the defaults in
+# frameshot/config.py. Unknown keys are rejected so typos surface early.
+
+vlc:
+  host: "127.0.0.1"
+  port: 8080
+  # Must match VLC's "Lua HTTP" password (Preferences -> All ->
+  # Interface -> Main interfaces -> Lua). Empty is allowed for localhost-only use.
+  password: "frameshot"
+  # 200 ms so pressing Play hides the overlay within the PRD's 200 ms budget.
+  poll_interval_ms: 200
+  request_timeout_s: 2.0
+
+analysis:
+  # beginner | intermediate | advanced
+  difficulty_level: "intermediate"
+  # Minimum vision detection confidence (0.0 - 1.0).
+  confidence_threshold: 0.7
+  # lite | balanced | full
+  model_profile: "balanced"
+
+overlay:
+  opacity: 0.85
+  # left | right | bottom | fullscreen
+  position: "right"
+  hotkey: "Ctrl+Shift+F"
+  auto_dismiss: true
+  # dark | light | auto
+  theme: "dark"
+
+online:
+  # Offline-first: online enrichment is disabled unless explicitly enabled.
+  enabled: false
+  cache_ttl_days: 7
+  services:
+    wikipedia: true
+    wiktionary: true
+    product_lookup: false
+
+paths:
+  models_dir: "./models"
+  database: "./data/frameshot.db"
+  word_freq: "./data/word_frequency.db"
+  # VLC writes snapshots here (VLC -> Preferences -> Video -> Video snapshots,
+  # or start VLC with --snapshot-path pointing at this directory).
+  snapshot_dir: "./data/snapshots"
+  log_dir: "./logs"

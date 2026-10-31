@@ -1,0 +1,15 @@
+1
+00:00:01,000 --> 00:00:03,500
+The edifice was resplendent under the moonlight.
+
+2
+00:00:04,000 --> 00:00:06,500
+<i>Nobody expects the Spanish Inquisition.</i>
+
+3
+00:01:10,250 --> 00:01:12,000
+{"She said, \"I'm nonplussed,\" and left."}
+
+4
+00:01:20,000 --> 00:01:22,000
+A juxtaposition of ostentatious opulence.

@@ -1,0 +1,5 @@
+# Vision pipeline dependencies (Phase 2 / spike 0.8-0.9).
+# This pulls PyTorch and is a multi-gigabyte download.
+# Install a CPU-only torch first if you have no NVIDIA GPU:
+#   pip install torch --index-url https://download.pytorch.org/whl/cpu
+-e .[vision]
