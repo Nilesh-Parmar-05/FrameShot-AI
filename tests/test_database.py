@@ -57,6 +57,71 @@ def test_vocabulary_journal_insert_and_read(tmp_path: Path) -> None:
         db.close()
 
 
+def test_vocabulary_journal_api_methods(tmp_path: Path) -> None:
+    db = Database(tmp_path / "test.db")
+    try:
+        # 1. Save entry
+        id1 = db.save_journal_entry(
+            word="ephemeral",
+            definition="lasting a very short time",
+            context="Life is ephemeral.",
+            movie_title="Sample Film",
+            timestamp_ms=45000,
+        )
+        assert id1 > 0
+        assert db.is_word_saved("ephemeral") is True
+        assert db.is_word_saved("EPHEMERAL") is True
+        assert db.is_word_saved("unrelated") is False
+
+        # 2. Duplicate word + context updates definition
+        id2 = db.save_journal_entry(
+            word="ephemeral",
+            definition="updated definition",
+            context="Life is ephemeral.",
+        )
+        assert id2 == id1
+
+        # 3. Add second word
+        id3 = db.save_journal_entry(
+            word="ubiquitous",
+            definition="present everywhere",
+            context="Smartphones are ubiquitous.",
+            movie_title="Tech Doc",
+            timestamp_ms=12000,
+        )
+        assert id3 != id1
+
+        # 4. Search queries
+        all_entries = db.get_journal_entries()
+        assert len(all_entries) == 2
+        assert all_entries[0]["id"] == id3  # newest first
+
+        search_res = db.get_journal_entries(query="ubiquitous")
+        assert len(search_res) == 1
+        assert search_res[0]["word"] == "ubiquitous"
+
+        search_context = db.get_journal_entries(query="Life is")
+        assert len(search_context) == 1
+        assert search_context[0]["word"] == "ephemeral"
+
+        # 5. Export to CSV
+        csv_path = tmp_path / "journal_export.csv"
+        count = db.export_journal_to_csv(csv_path)
+        assert count == 2
+        assert csv_path.is_file()
+        content = csv_path.read_text(encoding="utf-8")
+        assert "ephemeral" in content
+        assert "ubiquitous" in content
+        assert "Sample Film" in content
+
+        # 6. Delete entry
+        assert db.delete_journal_entry(id1) is True
+        assert db.is_word_saved("ephemeral") is False
+        assert len(db.get_journal_entries()) == 1
+    finally:
+        db.close()
+
+
 def test_transaction_rolls_back_on_error(tmp_path: Path) -> None:
     db = Database(tmp_path / "test.db")
     try:

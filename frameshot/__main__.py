@@ -1,6 +1,7 @@
 """CLI entry point: ``python -m frameshot``.
 
-python -m frameshot                       # run the app (core engine pending)
+python -m frameshot                       # run the app and monitor VLC
+python -m frameshot --once                # process single pause event and exit
 python -m frameshot doctor                # verify environment + VLC link
 python -m frameshot init-config           # write ./config.yaml from the example
 """
@@ -9,11 +10,12 @@ from __future__ import annotations
 
 import argparse
 import sys
+import time
 from collections.abc import Sequence
 from pathlib import Path
 
 from frameshot import __version__
-from frameshot.app import FrameShotApp
+from frameshot.app import AppState, FrameShotApp
 from frameshot.config import AppConfig, ConfigError
 from frameshot.doctor import init_config, run_doctor
 from frameshot.logging_setup import configure_logging
@@ -39,6 +41,16 @@ def build_parser() -> argparse.ArgumentParser:
         type=Path,
         default=None,
         help="path to config.yaml (default: ./config.yaml if present)",
+    )
+    parser.add_argument(
+        "--once",
+        action="store_true",
+        help="wait for a single pause event, process word assist & snapshot, then exit",
+    )
+    parser.add_argument(
+        "--no-ui",
+        action="store_true",
+        help="disable Qt overlay UI and run purely in terminal mode",
     )
     parser.add_argument(
         "--log-level",
@@ -71,9 +83,44 @@ def run(argv: Sequence[str] | None = None) -> int:
         return run_doctor(config)
 
     configure_logging(args.log_level, log_dir=config.paths.log_dir)
-    app = FrameShotApp(config)
+
+    ui_enabled = not args.no_ui
+    qapp = None
+
+    if ui_enabled:
+        try:
+            from PyQt6.QtCore import QTimer
+            from PyQt6.QtWidgets import QApplication
+
+            qapp = QApplication.instance()
+            if qapp is None:
+                qapp = QApplication(list(argv) if argv is not None else sys.argv)
+                qapp.setApplicationName("FrameShot-AI")
+                qapp.setQuitOnLastWindowClosed(False)
+        except Exception:
+            ui_enabled = False
+
+    app = FrameShotApp(config, run_once=args.once, enable_ui=ui_enabled)
+
+    if ui_enabled and app.overlay_manager is not None:
+        app.overlay_manager.initialize_gui()
+
     try:
         app.start()
+        if args.once:
+            app.wait_for_pause_processed()
+        elif qapp is not None:
+            # Wake Qt periodically so Python signal handlers (Ctrl+C) can be processed
+            import signal
+
+            signal.signal(signal.SIGINT, lambda *_: qapp.quit())
+            timer = QTimer()
+            timer.timeout.connect(lambda: None)
+            timer.start(500)
+            qapp.exec()
+        else:
+            while app.state != AppState.IDLE:
+                time.sleep(0.2)
     except KeyboardInterrupt:
         print("\ninterrupted", file=sys.stderr)
         return 130
