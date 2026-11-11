@@ -31,6 +31,7 @@ class Event(StrEnum):
     PLAYBACK_PAUSED = "playback.paused"
     PLAYBACK_RESUMED = "playback.resumed"
     PLAYBACK_STOPPED = "playback.stopped"
+    MEDIA_CHANGED = "media.changed"
 
     # Analysis
     ANALYSIS_STARTED = "analysis.started"

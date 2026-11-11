@@ -68,14 +68,14 @@ class _Section(BaseModel):
 class VLCConfig(_Section):
     host: str = "127.0.0.1"
     port: int = Field(default=8080, ge=1, le=65535)
-    password: str = ""
+    password: str = "frameshot"
     poll_interval_ms: int = Field(default=200, ge=50, le=5000)
     request_timeout_s: float = Field(default=2.0, gt=0.0, le=30.0)
 
 
 class AnalysisConfig(_Section):
     difficulty_level: DifficultyLevel = DifficultyLevel.INTERMEDIATE
-    confidence_threshold: float = Field(default=0.7, ge=0.0, le=1.0)
+    confidence_threshold: float = Field(default=0.35, ge=0.0, le=1.0)
     model_profile: ModelProfile = ModelProfile.BALANCED
 
 
@@ -85,12 +85,14 @@ class OverlayConfig(_Section):
     hotkey: str = "Ctrl+Shift+F"
     auto_dismiss: bool = True
     theme: Theme = Theme.DARK
+    vlc_only: bool = True
 
 
 class OnlineServicesConfig(_Section):
     wikipedia: bool = True
     wiktionary: bool = True
-    product_lookup: bool = False
+    product_lookup: bool = True
+    amazon_domain: str = "amazon.in"
 
 
 class OnlineConfig(_Section):

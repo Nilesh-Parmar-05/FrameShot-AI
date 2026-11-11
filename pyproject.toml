@@ -94,6 +94,7 @@ strict = true
 warn_unused_ignores = true
 show_error_codes = true
 files = ["frameshot"]
+exclude = ["(?i).*\\.venv.*"]
 
 # Optional extras (vision, ui, nlp) may be absent in a core-only install.
 [[tool.mypy.overrides]]
@@ -106,7 +107,14 @@ module = [
     "transformers",
     "ultralytics",
     "nltk",
+    "nltk.*",
+]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = [
     "PyQt6",
     "PyQt6.*",
 ]
 ignore_missing_imports = true
+follow_imports = "skip"
