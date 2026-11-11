@@ -49,10 +49,11 @@ def run_doctor(config: AppConfig) -> int:
         _check_vlc_binary(),
         _check_directories(config),
         _check_database(config),
+        _check_word_frequency_db(config),
         _check_vlc_http(config),
         _check_models(config),
         _check_optional_dependency("PyQt6 (overlay UI)", "PyQt6"),
-        _check_optional_dependency("nltk (word analysis)", "nltk"),
+        _check_nltk_corpora(),
         _check_optional_dependency("ultralytics (vision)", "ultralytics"),
     ]
 
@@ -133,6 +134,40 @@ def _check_database(config: AppConfig) -> Check:
         return Check("SQLite database", True, f"{len(tables)} tables, schema v{db.schema_version}")
     finally:
         db.close()
+
+
+def _check_word_frequency_db(config: AppConfig) -> Check:
+    path = config.paths.word_freq
+    if not path.is_file():
+        return Check(
+            "word frequency database",
+            False,
+            f"not found at {path} (run: python scripts/build_freq_db.py --seed-default)",
+            kind=OPTIONAL,
+        )
+    try:
+        import sqlite3
+
+        with sqlite3.connect(path) as conn:
+            row = conn.execute("SELECT COUNT(*) FROM word_frequency").fetchone()
+            count = row[0] if row else 0
+        return Check("word frequency database", True, f"{count:,} words in {path.name}", kind=OPTIONAL)
+    except Exception as exc:
+        return Check("word frequency database", False, str(exc), kind=OPTIONAL)
+
+
+def _check_nltk_corpora() -> Check:
+    try:
+        from nltk.corpus import cmudict, wordnet
+
+        # Probe WordNet and CMUdict
+        wordnet.synsets("test")
+        cmudict.dict()
+        return Check("nltk (wordnet + cmudict)", True, "installed & data loaded", kind=OPTIONAL)
+    except ImportError:
+        return Check("nltk (wordnet + cmudict)", False, "nltk not installed", kind=OPTIONAL)
+    except Exception as exc:
+        return Check("nltk (wordnet + cmudict)", False, f"data missing: {exc}", kind=OPTIONAL)
 
 
 def _check_vlc_http(config: AppConfig) -> Check:

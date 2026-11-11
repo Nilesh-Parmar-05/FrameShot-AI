@@ -1,10 +1,11 @@
-"""Download the offline models listed in tech-stack.md §6.
+"""Download offline vision models listed in tech-stack.md §6.
 
-Status: stub — task 2.1. Only the YOLO weights are reachable today (Ultralytics
-downloads them on first use). Captioning and CLIP models need an explicit URL
-decision from spike 0.9 first.
+Task 2.1 in ``tasks.md``.
+Downloads YOLOv8 weights into ``config.paths.models_dir``.
 
+Usage:
     python scripts/download_models.py --profile lite
+    python scripts/download_models.py --profile balanced
 """
 
 from __future__ import annotations
@@ -12,16 +13,44 @@ from __future__ import annotations
 import argparse
 import sys
 from pathlib import Path
+from urllib.request import urlretrieve
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from frameshot.config import AppConfig, ConfigError  # noqa: E402
 
+# Official Ultralytics weights URLs
+MODEL_URLS: dict[str, str] = {
+    "yolov8n.pt": "https://github.com/ultralytics/assets/releases/download/v8.2.0/yolov8n.pt",
+    "yolov8s.pt": "https://github.com/ultralytics/assets/releases/download/v8.2.0/yolov8s.pt",
+    "yolov8m.pt": "https://github.com/ultralytics/assets/releases/download/v8.2.0/yolov8m.pt",
+}
+
 PROFILE_ASSETS = {
     "lite": ["yolov8n.pt"],
-    "balanced": ["yolov8s.pt", "florence-2-base"],
-    "full": ["yolov8m.pt", "blip2-opt-2.7b-int8", "clip-vit-b32"],
+    "balanced": ["yolov8s.pt"],
+    "full": ["yolov8m.pt"],
 }
+
+
+def download_file(url: str, dest: Path) -> bool:
+    """Download url to dest with progress indication."""
+    print(f"Downloading {url} -> {dest.name}...")
+    try:
+        def reporthook(block_num: int, block_size: int, total_size: int) -> None:
+            if total_size > 0:
+                percent = min(100.0, (block_num * block_size / total_size) * 100)
+                sys.stdout.write(f"\r  {dest.name}: {percent:.1f}% ({total_size / (1024*1024):.1f} MB)")
+                sys.stdout.flush()
+
+        urlretrieve(url, str(dest), reporthook=reporthook)
+        print("\n  Done.")
+        return True
+    except Exception as exc:
+        print(f"\n  Download failed: {exc}", file=sys.stderr)
+        if dest.exists():
+            dest.unlink(missing_ok=True)
+        return False
 
 
 def main() -> int:
@@ -33,16 +62,33 @@ def main() -> int:
     try:
         config = AppConfig.load(args.config)
     except ConfigError as exc:
-        print(f"configuration error: {exc}", file=sys.stderr)
+        print(f"Configuration error: {exc}", file=sys.stderr)
         return 2
 
-    config.paths.models_dir.mkdir(parents=True, exist_ok=True)
-    print(f"models directory: {config.paths.models_dir}")
-    print(f"profile '{args.profile}' needs:")
-    for asset in PROFILE_ASSETS[args.profile]:
-        print(f"  - {asset}")
-    print("\nNot implemented yet (tasks.md 2.1). Spike 0.9 decides the captioning model.")
-    return 0
+    models_dir = config.paths.models_dir
+    models_dir.mkdir(parents=True, exist_ok=True)
+
+    print(f"Models directory: {models_dir}")
+    print(f"Target profile: '{args.profile}'")
+
+    assets = PROFILE_ASSETS[args.profile]
+    success = True
+    for asset in assets:
+        target_path = models_dir / asset
+        if target_path.is_file():
+            print(f"  [ OK ] {asset} already exists ({target_path.stat().st_size} bytes)")
+            continue
+
+        url = MODEL_URLS.get(asset)
+        if not url:
+            print(f"  [ !! ] No download URL configured for {asset}")
+            success = False
+            continue
+
+        if not download_file(url, target_path):
+            success = False
+
+    return 0 if success else 1
 
 
 if __name__ == "__main__":
