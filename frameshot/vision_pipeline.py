@@ -333,6 +333,23 @@ class VisionPipeline:
             logger.warning("Could not load vision model '%s': %s", weights_file, exc)
             self._model = None
 
+    def warmup(self) -> bool:
+        """Pre-warm model weights and execution graph to eliminate first-inference latency."""
+        self._ensure_model_loaded()
+        if self._model is None or np is None:
+            return False
+
+        try:
+            start_t = time.perf_counter()
+            dummy = np.zeros((64, 64, 3), dtype=np.uint8)
+            self._model.predict(source=dummy, conf=self.confidence_threshold, verbose=False)
+            elapsed_ms = (time.perf_counter() - start_t) * 1000
+            logger.info("Vision model warmed up in %.1f ms", elapsed_ms)
+            return True
+        except Exception as exc:
+            logger.debug("Vision warmup skipped or failed: %s", exc)
+            return False
+
     def detect_objects(self, image_input: str | Path | np.ndarray) -> list[Detection]:
         """Run YOLOv8 object detection (FR-30)."""
         self._ensure_model_loaded()

@@ -299,10 +299,11 @@ class VLCController:
                 logger.info("VLC poller thread stopped")
 
     def _poll_loop(self, bus: EventBus) -> None:
-        poll_s = max(self._config.poll_interval_ms, 50) / 1000.0
+        base_poll_s = max(self._config.poll_interval_ms, 50) / 1000.0
         last_warn_time = 0.0
 
         while not self._stop_event.is_set():
+            wait_s = base_poll_s
             try:
                 status = self.get_status()
                 if not self._connected:
@@ -327,7 +328,15 @@ class VLCController:
                         bus.publish(Event.PLAYBACK_STOPPED, status)
                     self._prev_state = status.state
 
+                # Adaptive rate: relaxed interval when stopped (idle)
+                if status.state == PlaybackState.STOPPED:
+                    wait_s = max(base_poll_s * 4.0, 1.0)
+                else:
+                    wait_s = base_poll_s
+
             except requests.RequestException as exc:
+                # Backoff when disconnected to save CPU and network
+                wait_s = max(base_poll_s * 5.0, 1.5)
                 if self._connected:
                     self._connected = False
                     logger.warning("Lost connection to VLC HTTP interface: %s", exc)
@@ -343,4 +352,4 @@ class VLCController:
             except Exception:
                 logger.exception("unexpected error in VLC poller loop")
 
-            self._stop_event.wait(poll_s)
+            self._stop_event.wait(wait_s)

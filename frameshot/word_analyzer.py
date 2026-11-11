@@ -200,7 +200,7 @@ class WordAnalyzer:
     ) -> None:
         self.difficulty_level = difficulty_level
         self._ranks: dict[str, int] = {}
-        self._pronunciations: dict[str, list[list[str]]] = {}
+        self._pronunciations: dict[str, list[list[str]]] | None = None
         self._stop_words: set[str] = set(FALLBACK_STOPWORDS)
 
         self._load_frequency_source(freq_db_path)
@@ -243,7 +243,7 @@ class WordAnalyzer:
         logger.warning("No corpus available; word difficulty classification will use heuristics")
 
     def _load_dictionary_resources(self) -> None:
-        """Load NLTK CMUdict and stopwords."""
+        """Load NLTK stopwords (cmudict dictionary loaded lazily on demand)."""
         try:
             from nltk.corpus import stopwords
 
@@ -251,12 +251,16 @@ class WordAnalyzer:
         except Exception:
             self._stop_words = set(FALLBACK_STOPWORDS)
 
-        try:
-            from nltk.corpus import cmudict
+    def _get_pronunciations(self) -> dict[str, list[list[str]]]:
+        """Lazy-load CMU pronouncing dictionary on first lookup."""
+        if self._pronunciations is None:
+            try:
+                from nltk.corpus import cmudict
 
-            self._pronunciations = cmudict.dict()
-        except Exception:
-            self._pronunciations = {}
+                self._pronunciations = cmudict.dict()
+            except Exception:
+                self._pronunciations = {}
+        return self._pronunciations
 
     # ------------------------------------------------------------ API
 
@@ -323,7 +327,7 @@ class WordAnalyzer:
 
         # Pronunciation
         ipa: str | None = None
-        phones = self._pronunciations.get(lemma)
+        phones = self._get_pronunciations().get(lemma)
         if phones:
             ipa = f"/{arpabet_to_ipa(phones[0])}/"
 

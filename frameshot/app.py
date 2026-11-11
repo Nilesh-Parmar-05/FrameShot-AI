@@ -135,6 +135,13 @@ class FrameShotApp:
         self.vlc.start_polling(self.bus)
         logger.info("Monitoring VLC on %s (poll interval: %d ms)", self.vlc.base_url, self.config.vlc.poll_interval_ms)
 
+        if self.vision_pipeline is not None:
+            threading.Thread(
+                target=self.vision_pipeline.warmup,
+                name="vision-warmup",
+                daemon=True,
+            ).start()
+
     def stop(self) -> None:
         """Gracefully terminate polling, overlay, and close resources."""
         self.state = AppState.IDLE

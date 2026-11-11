@@ -98,3 +98,15 @@ def test_detect_objects_mocked():
     assert d.confidence == 0.892
     assert d.bbox == (10, 20, 100, 200)
 
+
+def test_vision_pipeline_warmup():
+    pipe = VisionPipeline()
+    pipe._model_loaded = True
+
+    mock_model = MagicMock()
+    mock_model.predict.return_value = []
+    pipe._model = mock_model
+
+    assert pipe.warmup() is True
+    mock_model.predict.assert_called_once()
+
